@@ -1,6 +1,7 @@
 streamlit==1.46.0
 openai==0.28
 python-dotenv==1.1.0
-streamlit-authenticator
-bcrypt
-sqlite3
+streamlit-authenticator==0.4.2
+bcrypt==4.3.0
+sqlite3==3.3.4
+
