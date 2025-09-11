@@ -102,6 +102,9 @@ def get_code_feedback(code, api_key, tone_choice="Supportive"):
 
     return response.choices[0].message['content']
 
+load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY")
+st.write("key loaded:", api_key is not None)
 
 # -----------------------------
 # Pages
@@ -115,7 +118,7 @@ def login_page():
         if user:
             st.session_state["user"] = user
             st.session_state["logged_in"] = True
-            st.experimental_rerun()
+            st.rerun()  # ✅ updated
         else:
             st.error("Invalid username or password")
 
@@ -158,7 +161,7 @@ def user_management():
                     if st.button("🗑️ Delete", key=f"del_{u[0]}"):
                         if delete_user(u[0]):
                             st.success(f"User {u[0]} deleted")
-                            st.experimental_rerun()
+                            st.rerun()  # ✅ updated
 
 
 def code_review_app(api_key):
@@ -210,8 +213,6 @@ def code_review_app(api_key):
 # -----------------------------
 # Main App Routing
 # -----------------------------
-load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
 
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
@@ -222,7 +223,7 @@ else:
     st.sidebar.write(f"👋 Welcome, {st.session_state['user']['name']} ({st.session_state['user']['role']})")
     if st.sidebar.button("Logout"):
         st.session_state.clear()
-        st.experimental_rerun()
+        st.rerun()  # ✅ updated
 
     if st.session_state["user"]["role"] == "admin":
         page = st.sidebar.selectbox("Choose Page", ["Code Review", "User Management"])
