@@ -5,70 +5,66 @@ import bcrypt
 from dotenv import load_dotenv
 import openai
 
-# -----------------------------
-# Database Setup & User Helpers
-# -----------------------------
+MAX_CHARS = 4000
+
+# ------------------------------
+# Database utilities
+# ------------------------------
+
 def init_db():
-    conn = sqlite3.connect("users.db")
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS users
-                 (username TEXT PRIMARY KEY, 
-                  name TEXT, 
-                  password TEXT, 
-                  role TEXT)''')
-    conn.commit()
-    conn.close()
+    with sqlite3.connect("users.db", timeout=10) as conn:
+        conn.execute("PRAGMA journal_mode=WAL;")  # better concurrency
+        c = conn.cursor()
+        c.execute(
+            """CREATE TABLE IF NOT EXISTS users (
+                username TEXT PRIMARY KEY,
+                name TEXT,
+                password TEXT,
+                role TEXT
+            )"""
+        )
+        conn.commit()
+    # Ensure admin user exists
+    if not verify_user("admin", "admin"):
+        add_user("admin", "Administrator", "admin", "admin")
 
 def add_user(username, name, password, role="user"):
-    conn = sqlite3.connect("users.db")
-    c = conn.cursor()
     hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    c.execute("INSERT INTO users (username, name, password, role) VALUES (?, ?, ?, ?)", 
-              (username, name, hashed_pw, role))
-    conn.commit()
-    conn.close()
+    with sqlite3.connect("users.db", timeout=10) as conn:
+        c = conn.cursor()
+        c.execute(
+            "INSERT OR REPLACE INTO users (username, name, password, role) VALUES (?, ?, ?, ?)",
+            (username, name, hashed_pw, role),
+        )
+        conn.commit()
 
 def verify_user(username, password):
-    conn = sqlite3.connect("users.db")
-    c = conn.cursor()
-    c.execute("SELECT password, role, name FROM users WHERE username=?", (username,))
-    row = c.fetchone()
-    conn.close()
-    if row and bcrypt.checkpw(password.encode(), row[0].encode()):
-        return {"role": row[1], "name": row[2], "username": username}
+    with sqlite3.connect("users.db", timeout=10) as conn:
+        c = conn.cursor()
+        c.execute("SELECT username, name, password, role FROM users WHERE username=?", (username,))
+        row = c.fetchone()
+    if row and bcrypt.checkpw(password.encode(), row[2].encode()):
+        return {"username": row[0], "name": row[1], "role": row[3]}
     return None
 
 def get_all_users():
-    conn = sqlite3.connect("users.db")
-    c = conn.cursor()
-    c.execute("SELECT username, name, role FROM users")
-    rows = c.fetchall()
-    conn.close()
-    return rows
+    with sqlite3.connect("users.db", timeout=10) as conn:
+        c = conn.cursor()
+        c.execute("SELECT username, name, role FROM users")
+        return c.fetchall()
 
 def delete_user(username):
     if username == "admin":
-        return False  # protect default admin
-    conn = sqlite3.connect("users.db")
-    c = conn.cursor()
-    c.execute("DELETE FROM users WHERE username=?", (username,))
-    conn.commit()
-    conn.close()
+        return False
+    with sqlite3.connect("users.db", timeout=10) as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM users WHERE username=?", (username,))
+        conn.commit()
     return True
 
-# Initialize DB
-init_db()
-# Ensure there is at least one admin
-try:
-    add_user("admin", "Administrator", "admin123", "admin")
-except:
-    pass  # already exists
-
-
-# -----------------------------
-# OpenAI Code Review Function
-# -----------------------------
-MAX_CHARS = 4000
+# ------------------------------
+# OpenAI logic
+# ------------------------------
 
 def get_code_feedback(code, api_key, tone_choice="Supportive"):
     openai.api_key = api_key
@@ -94,21 +90,19 @@ def get_code_feedback(code, api_key, tone_choice="Supportive"):
     Here is the code:
     {code}
     """
+
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.4   
+        temperature=0.4,
     )
 
-    return response.choices[0].message['content']
+    return response.choices[0].message["content"]
 
-load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
-st.write("key loaded:", api_key is not None)
+# ------------------------------
+# Streamlit pages
+# ------------------------------
 
-# -----------------------------
-# Pages
-# -----------------------------
 def login_page():
     st.title("🔑 Login")
     username = st.text_input("Username")
@@ -118,64 +112,53 @@ def login_page():
         if user:
             st.session_state["user"] = user
             st.session_state["logged_in"] = True
-            st.rerun()  # ✅ updated
+            st.success(f"Welcome, {user['name']}!")
+            st.rerun()
         else:
             st.error("Invalid username or password")
 
-
-def user_management():
+def user_management_page():
     st.title("👥 User Management")
 
-    # --- Add User ---
-    st.subheader("➕ Add New User")
-    username = st.text_input("New Username")
-    name = st.text_input("Full Name")
-    password = st.text_input("Password", type="password")
-    role = st.selectbox("Role", ["user", "admin"])
+    st.subheader("Add User")
+    with st.form("add_user_form"):
+        username = st.text_input("Username")
+        name = st.text_input("Name")
+        password = st.text_input("Password", type="password")
+        role = st.selectbox("Role", ["user", "admin"])
+        submitted = st.form_submit_button("Add User")
+        if submitted:
+            if username and password:
+                add_user(username, name, password, role)
+                st.success(f"User {username} added!")
+                st.rerun()
+            else:
+                st.error("Username and password required!")
 
-    if st.button("Add User"):
-        try:
-            add_user(username, name, password, role)
-            st.success(f"✅ User {username} added successfully")
-        except Exception as e:
-            st.error(f"❌ Error: {e}")
-
-    st.markdown("---")
-
-    # --- User List ---
-    st.subheader("📋 Existing Users")
+    st.subheader("User List")
     users = get_all_users()
-    if not users:
-        st.info("No users found.")
-    else:
-        for u in users:
-            col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
-            with col1:
-                st.write(f"**{u[0]}**")  # username
-            with col2:
-                st.write(u[1])  # name
-            with col3:
-                st.write(u[2])  # role
-            with col4:
-                if u[0] != "admin":  # prevent deleting default admin
-                    if st.button("🗑️ Delete", key=f"del_{u[0]}"):
-                        if delete_user(u[0]):
-                            st.success(f"User {u[0]} deleted")
-                            st.rerun()  # ✅ updated
+    for u in users:
+        col1, col2, col3 = st.columns([2, 2, 1])
+        col1.write(u[0])  # username
+        col2.write(f"{u[1]} ({u[2]})")
+        if u[0] != "admin":
+            if col3.button("Delete", key=f"del_{u[0]}"):
+                if delete_user(u[0]):
+                    st.success(f"Deleted {u[0]}")
+                    st.rerun()
+                else:
+                    st.error("Cannot delete admin user")
 
-
-def code_review_app(api_key):
-    st.set_page_config(page_title="Code Review Assistance", layout="wide")
-    st.title("🧑‍💻 Code Review Assistant")
+def code_review_page(api_key):
+    st.title("💻 Code Review Assistant")
 
     col1, col2 = st.columns([1, 1])
-
     with col1:
-        st.subheader("Paste your code here for review")
+        st.subheader("Paste your code here")
         code_input = st.text_area("Your Code Here", height=300)
 
     with col2:
-        st.subheader("Review output")
+        st.subheader("Review Output")
 
     if st.session_state.get("feedback"):
         st.markdown("### AI Code Review")
@@ -185,14 +168,13 @@ def code_review_app(api_key):
     else:
         st.info("Paste some code to review or upload a file")
 
-    uploaded_file = st.file_uploader("Or upload a file", type=["py", "txt"])
-
+    uploaded_file = st.file_uploader("Or upload a file", type=["py", "txt", "tf"])
     if uploaded_file is not None:
         try:
             code_input = uploaded_file.read().decode("utf-8")
             st.text_area("File Content", code_input, height=300)
         except Exception:
-            st.error("Could not read the file. Please upload a valid .py or .txt file.")
+            st.error("Could not read the file. Please upload a valid .py, .txt file. or .tf")
 
     tone = st.selectbox("Choose Feedback Tone", ["Supportive", "Direct", "Humorous"])
 
@@ -206,31 +188,43 @@ def code_review_app(api_key):
                 try:
                     feedback = get_code_feedback(code_input, api_key, tone)
                     st.session_state["feedback"] = feedback
+                    st.rerun()
                 except Exception as e:
                     st.error(f"Something went wrong: {str(e)}")
 
+# ------------------------------
+# Main app
+# ------------------------------
 
-# -----------------------------
-# Main App Routing
-# -----------------------------
+def main():
+    load_dotenv()
+    api_key = os.getenv("OPENAI_API_KEY")
+    st.write("OpenAI key loaded:", api_key is not None)
 
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
+    st.set_page_config(page_title="Code Review Assistant", layout="wide")
 
-if not st.session_state["logged_in"]:
-    login_page()
-else:
-    st.sidebar.write(f"👋 Welcome, {st.session_state['user']['name']} ({st.session_state['user']['role']})")
+    # Initialize DB
+    init_db()
+
+    if not st.session_state.get("logged_in"):
+        login_page()
+        return
+
+    user = st.session_state["user"]
+
+    st.sidebar.title(f"Welcome, {user['name']}")
+    page = st.sidebar.radio("Navigation", ["Code Review", "User Management"])
     if st.sidebar.button("Logout"):
         st.session_state.clear()
-        st.rerun()  # ✅ updated
+        st.rerun()
 
-    if st.session_state["user"]["role"] == "admin":
-        page = st.sidebar.selectbox("Choose Page", ["Code Review", "User Management"])
-    else:
-        page = "Code Review"
+    if page == "Code Review":
+        code_review_page(api_key)
+    elif page == "User Management":
+        if user["role"] == "admin":
+            user_management_page()
+        else:
+            st.error("Access denied. Admins only.")
 
-    if page == "User Management":
-        user_management()
-    else:
-        code_review_app(api_key)
+if __name__ == "__main__":
+    main()
