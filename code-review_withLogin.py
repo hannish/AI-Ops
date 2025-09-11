@@ -3,7 +3,7 @@ import os
 import sqlite3
 import bcrypt
 from dotenv import load_dotenv
-import openai
+from openai import OpenAI 
 
 MAX_CHARS = 6000
 
@@ -67,7 +67,8 @@ def delete_user(username):
 # ------------------------------
 
 def get_code_feedback(code, api_key, tone_choice="Supportive"):
-    openai.api_key = api_key
+
+#   openai.api_key = api_key
 
     if tone_choice == "Supportive":
         tone_instruction = "You are a kind and encouraging code review assistant."
@@ -91,13 +92,24 @@ def get_code_feedback(code, api_key, tone_choice="Supportive"):
     {code}
     """
 
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+ #  response = openai.ChatCompletion.create(
+ #      model="gpt-3.5-turbo",
+ #      messages=[{"role": "user", "content": prompt}],
+ #      temperature=0.4,
+    # )
+
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=api_key,  
+    )
+
+    completion = client.chat.completions.create(
+        model="openai/gpt-4-turbo",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.4,
     )
 
-    return response.choices[0].message["content"]
+    return completion.choices[0].message.content
 
 # ------------------------------
 # Streamlit pages
@@ -157,9 +169,6 @@ def code_review_page(api_key):
         st.subheader("Paste your code here")
         code_input = st.text_area("Your Code Here", height=300)
 
-   # with col2:
-   #     st.subheader("Review Output")
-
     if st.session_state.get("feedback"):
         st.markdown("### AI Code Review")
         st.markdown(st.session_state["feedback"])
@@ -199,9 +208,8 @@ def code_review_page(api_key):
 def main():
     load_dotenv()
     api_key = os.getenv("OPENAI_API_KEY")
-    st.write("OpenAI key loaded:", api_key is not None)
-
     st.set_page_config(page_title="Code Review Assistant", layout="wide")
+    st.write("OpenAI key loaded:", api_key is not None)
 
     # Initialize DB
     init_db()
@@ -228,7 +236,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
