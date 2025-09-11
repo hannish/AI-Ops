@@ -5,7 +5,7 @@ import bcrypt
 from dotenv import load_dotenv
 import openai
 
-MAX_CHARS = 4000
+MAX_CHARS = 6000
 
 # ------------------------------
 # Database utilities
@@ -228,6 +228,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
