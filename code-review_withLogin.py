@@ -174,7 +174,7 @@ def code_review_page(api_key):
             code_input = uploaded_file.read().decode("utf-8")
             st.text_area("File Content", code_input, height=300)
         except Exception:
-            st.error("Could not read the file. Please upload a valid .py, .sh, .tf, .yaml, .yml, json")
+            st.error("Could not read the file. Please upload a valid .py, .sh, .tf, .yaml, .yml, .json")
 
     tone = st.selectbox("Choose Feedback Tone", ["Supportive", "Direct", "Humorous"])
 
@@ -228,5 +228,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
