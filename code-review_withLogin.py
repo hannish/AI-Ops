@@ -93,11 +93,13 @@ def get_code_feedback(code, api_key, tone_choice="Supportive"):
     {code}
     """
 
-       response = openai.ChatCompletion.create(
-           model="gpt-3.5-turbo",
-           messages=[{"role": "user", "content": prompt}],
-           temperature=0.4,
-     )
+   response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.4   
+    )
+
+    return response.choices[0].message['content']
 
 #    client = OpenAI(
 #        base_url="https://openrouter.ai/api/v1",
@@ -237,6 +239,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
