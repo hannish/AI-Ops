@@ -93,10 +93,10 @@ def get_code_feedback(code, api_key, tone_choice="Supportive"):
     {code}
     """
 
-   response = openai.ChatCompletion.create(
-       model="gpt-3.5-turbo",
-       messages=[{"role": "user", "content": prompt}],
-       temperature=0.4,
+       response = openai.ChatCompletion.create(
+           model="gpt-3.5-turbo",
+           messages=[{"role": "user", "content": prompt}],
+           temperature=0.4,
      )
 
 #    client = OpenAI(
@@ -237,5 +237,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
