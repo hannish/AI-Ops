@@ -157,8 +157,8 @@ def code_review_page(api_key):
         st.subheader("Paste your code here")
         code_input = st.text_area("Your Code Here", height=300)
 
-    with col2:
-        st.subheader("Review Output")
+   # with col2:
+   #     st.subheader("Review Output")
 
     if st.session_state.get("feedback"):
         st.markdown("### AI Code Review")
@@ -228,3 +228,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
