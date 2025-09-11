@@ -168,13 +168,13 @@ def code_review_page(api_key):
     else:
         st.info("Paste some code to review or upload a file")
 
-    uploaded_file = st.file_uploader("Or upload a file", type=["py", "txt", "tf"])
+    uploaded_file = st.file_uploader("Or upload a file", type=["py", "sh", "tf", "yaml", "yml", "json"])
     if uploaded_file is not None:
         try:
             code_input = uploaded_file.read().decode("utf-8")
             st.text_area("File Content", code_input, height=300)
         except Exception:
-            st.error("Could not read the file. Please upload a valid .py, .txt file. or .tf")
+            st.error("Could not read the file. Please upload a valid .py, .sh, .tf, .yaml, .yml, json")
 
     tone = st.selectbox("Choose Feedback Tone", ["Supportive", "Direct", "Humorous"])
 
@@ -228,4 +228,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
