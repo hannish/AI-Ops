@@ -110,7 +110,7 @@ def get_code_feedback(code, api_key, tone_choice="Supportive"):
 #        temperature=0.4,
 #    )
 
-    return completion.choices[0].message.content
+    print(completion.choices[0].message.content)
 
 # ------------------------------
 # Streamlit pages
@@ -237,4 +237,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
