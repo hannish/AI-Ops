@@ -2,8 +2,9 @@ import streamlit as st
 import os
 import sqlite3
 import bcrypt
+import openai
 from dotenv import load_dotenv
-from openai import OpenAI 
+#from openai import OpenAI 
 
 MAX_CHARS = 6000
 
@@ -68,7 +69,7 @@ def delete_user(username):
 
 def get_code_feedback(code, api_key, tone_choice="Supportive"):
 
-#   openai.api_key = api_key
+    openai.api_key = api_key
 
     if tone_choice == "Supportive":
         tone_instruction = "You are a kind and encouraging code review assistant."
@@ -92,22 +93,22 @@ def get_code_feedback(code, api_key, tone_choice="Supportive"):
     {code}
     """
 
- #  response = openai.ChatCompletion.create(
- #      model="gpt-3.5-turbo",
- #      messages=[{"role": "user", "content": prompt}],
- #      temperature=0.4,
-    # )
+   response = openai.ChatCompletion.create(
+       model="gpt-3.5-turbo",
+       messages=[{"role": "user", "content": prompt}],
+       temperature=0.4,
+     )
 
-    client = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=api_key,  
-    )
+#    client = OpenAI(
+#        base_url="https://openrouter.ai/api/v1",
+#        api_key=api_key,  
+#    )
 
-    completion = client.chat.completions.create(
-        model="openai/gpt-4-turbo",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.4,
-    )
+#   completion = client.chat.completions.create(
+#        model="openai/gpt-4-turbo",
+#        messages=[{"role": "user", "content": prompt}],
+#        temperature=0.4,
+#    )
 
     return completion.choices[0].message.content
 
@@ -236,3 +237,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
